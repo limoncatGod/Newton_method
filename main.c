@@ -152,7 +152,6 @@ double** form_func_arr(int num_of_vars, double** array_vars, char** system_equat
         str_derivative_array[0] = te_eval(n);
         func_array[i] = str_derivative_array;
         te_free(n);
-        printf("%lf", str_derivative_array[0]);
     }
     return func_array;
 }
@@ -188,21 +187,17 @@ int main() {
     printf("Enter equations:\n");
     char** system_equations = create_system(num_equations, num_of_vars);
     for(int i = 0; i < 1000; i++){
-        //printf("%d \n", i);
         double** derivative_array = get_inverse_matrix(form_derivative(num_equations, num_of_vars, array_vars, system_equations, variables), num_of_vars);
         double** func_array = form_func_arr(num_of_vars, array_vars, system_equations, variables);
         double** mult_array = multiple_matrix(derivative_array, func_array, num_of_vars, num_of_vars, num_of_vars, 1);
         array_vars = matrix_subtraction(array_vars, mult_array, num_of_vars, 1);
-        /*for(int i = 0; i < num_of_vars; i++){
-            printf("%lf\n", array_vars[i][0]);
-        }*/
         for(int i = 0; i < num_of_vars; i++){
             te_variable variable = {name_of_vars[i], &array_vars[i][0]};
             variables[i] = variable;
         }
      }
     for(int i = 0; i < num_of_vars; i++){
-        printf("%lf", array_vars[i][0]);
+        printf("%lf\n", array_vars[i][0]);
     }
     return 0;
 }
