@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include "tinyexpr.h"
 #include "tinyexpr.c"
 
@@ -7,8 +8,27 @@
 #define APPROXIMATE_VALUE 0.0000000000001
 #define LEN_STR 10000
 #define LEN_VAR_NAME 5
+#define LEN_VAR_ARRAY 1000
 
 
+
+//-------------FREE MEMORY----------------------------------
+void free_array(double** array, int row){
+    for(int i = 0; i < row; i++){
+        free(array[i]);
+    }
+    free(array);
+}
+
+void free_array_char(char** array, int row){
+    for(int i = 0; i < row; i++){
+        free(array[i]);
+    }
+    free(array);
+}
+
+
+//------------------WORK WITH MATRIX------------------------------------
 double** get_cofactor(double** matrix, int row, int col, int order){
     double** new_matrix = malloc(order*sizeof(double *));
     for(int i = 0; i < (order-1);i++){
@@ -23,7 +43,6 @@ double** get_cofactor(double** matrix, int row, int col, int order){
 
 
 double get_det(double** matrix, int order){
-    double** new_matrix = malloc(order*sizeof(double *));
     double det = 0;
     if(order == 1){
         return matrix[0][0];
@@ -94,37 +113,24 @@ double** matrix_subtraction(double** matrix_1, double** matrix_2, int row, int c
 }
 
 
+//------------------WORK WITH EQUATIONS---------------------------------
 char** create_system(int num_equations, int num_of_vars){
-    if(num_of_vars > num_equations){
-        char **system_equations = malloc(num_of_vars*LEN_STR*sizeof(char));
-        for(int i = 0; i < num_of_vars; i++){
-            if(i<num_equations){
-                system_equations[i] = (char*)malloc(sizeof(char) * LEN_STR);
-                scanf("%s", system_equations[i]);
-            } else {
-                system_equations[i] = (char*)malloc(sizeof(char) * LEN_STR);
-                system_equations[i] = system_equations[0];
-            }
+    char **system_equations = malloc(num_of_vars*LEN_STR*sizeof(char));
+    for(int i = 0; i < num_equations; i++){
+        if(i > (num_of_vars-1)){
+            char* equation = malloc(sizeof(char) * LEN_STR);
+            scanf("%s", equation);
+            system_equations[num_of_vars-1] = strcat(strcat(system_equations[num_of_vars-1], "+"), equation);
+        } else {
+            system_equations[i] = (char*)malloc(sizeof(char) * LEN_STR);
+            scanf("%s", system_equations[i]);
         }
-        return system_equations;
-    } else {
-        char **system_equations = malloc(num_of_vars*LEN_STR*sizeof(char));
-        for(int i = 0; i < num_equations; i++){
-            if(i > (num_of_vars-1)){
-                char* equation = malloc(sizeof(char) * LEN_STR);
-                scanf("%s", equation);
-                system_equations[num_of_vars-1] = strcat(strcat(system_equations[num_of_vars-1], "+"), equation);
-            } else {
-                system_equations[i] = (char*)malloc(sizeof(char) * LEN_STR);
-                scanf("%s", system_equations[i]);
-            }
-        }
-        return system_equations;
     }
+    return system_equations;
 }
 
 
-double** form_derivative(int num_equations, int num_of_vars, double** array_vars, char** system_equations, te_variable variables[]){
+double** form_derivative(int num_of_vars, double** array_vars, char** system_equations, te_variable variables[]){
     double** derivative_array = malloc(num_of_vars*sizeof(double*));
     int err;
     for(int i = 0; i < num_of_vars; i++){
@@ -138,10 +144,12 @@ double** form_derivative(int num_equations, int num_of_vars, double** array_vars
             array_vars[g][0] = array_vars[g][0] + APPROXIMATE_VALUE;
             str_derivative_array[g] = (a-b)/(APPROXIMATE_VALUE);
         }
+        te_free(n);
         derivative_array[i] = str_derivative_array;
     }
     return derivative_array;
 }
+
 
 double** form_func_arr(int num_of_vars, double** array_vars, char** system_equations, te_variable variables[]){
     double** func_array = malloc(num_of_vars*sizeof(double*));
@@ -158,16 +166,20 @@ double** form_func_arr(int num_of_vars, double** array_vars, char** system_equat
 
 
 int main() {
-    int num_equations = 0;
+    int num_equations = 0, num_of_vars = 0, err = 0;
     double guess = 3;
-    int num_of_vars = 0;
-    int err;
+
+
     printf("Please, enter number of variables from the system of equations:\n");
     scanf("%d", &num_of_vars);
+
+
     double** array_vars = malloc(num_of_vars*sizeof(double*));
-    te_variable variables[1000] = {};
+    te_variable variables[LEN_VAR_ARRAY] = {};
     char** name_of_vars = malloc(num_of_vars*sizeof(char *));
-    printf("Please, enter variables from the system of equations separated by a space(example:x y w z):\n");
+
+
+    printf("Please, enter variables from the system of equations separated by a space:\nExample: x y w z\n");
     for(int i = 0; i < num_of_vars; i++){
         double* array_len_vars = malloc(1*sizeof(double));
         array_vars[i] = array_len_vars;
@@ -178,16 +190,26 @@ int main() {
         te_variable variable = {name_of_vars[i], &array_vars[i][0]};
         variables[i] = variable;
     }
-    printf("Enter number of equations:\n");
-    scanf("%d", &num_equations);
+
+
     printf("Enter the hypothetical root of the equations:\n");
     scanf("%lf", &guess);
+    printf("Enter number of equations:\n");
+    scanf("%d", &num_equations);
+    if(num_of_vars < num_equations){
+        printf("WARNING!!!\nIf there are more equations than the number of variables, then the program may give an incorrect result!\n");
+    } else if(num_of_vars > num_equations) {
+        printf("WARNING!!!\nNumber of equations < number of variables\n");
+        return 0;
+    }
     printf("Enter equations:\n");
     printf("Examples:\nx^2+y^2-2\nx-y+3\nsqrt(x+y)+2\n");
     printf("Enter equations:\n");
     char** system_equations = create_system(num_equations, num_of_vars);
+
+
     for(int i = 0; i < 1000; i++){
-        double** derivative_array = get_inverse_matrix(form_derivative(num_equations, num_of_vars, array_vars, system_equations, variables), num_of_vars);
+        double** derivative_array = get_inverse_matrix(form_derivative(num_of_vars, array_vars, system_equations, variables), num_of_vars);
         double** func_array = form_func_arr(num_of_vars, array_vars, system_equations, variables);
         double** mult_array = multiple_matrix(derivative_array, func_array, num_of_vars, num_of_vars, num_of_vars, 1);
         array_vars = matrix_subtraction(array_vars, mult_array, num_of_vars, 1);
@@ -195,9 +217,20 @@ int main() {
             te_variable variable = {name_of_vars[i], &array_vars[i][0]};
             variables[i] = variable;
         }
-     }
-    for(int i = 0; i < num_of_vars; i++){
-        printf("%lf\n", array_vars[i][0]);
+        free_array(derivative_array, num_of_vars);
+        free_array(func_array, num_of_vars);
+        free_array(mult_array, num_of_vars);
     }
+
+
+    printf("\n");
+    for(int i = 0; i < num_of_vars; i++){
+        printf("%s = %lf\n", name_of_vars[i], array_vars[i][0]);
+    }
+
+
+    free_array(array_vars, num_of_vars);
+    free_array_char(system_equations, num_of_vars);
+    free_array_char(name_of_vars, num_of_vars);
     return 0;
 }
